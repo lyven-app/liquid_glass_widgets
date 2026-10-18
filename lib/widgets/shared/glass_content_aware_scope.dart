@@ -125,6 +125,7 @@ class GlassContentAwareScope extends StatefulWidget {
     this.flipCurve = Curves.easeInOut,
     this.lightToDarkThreshold = 0.6,
     this.darkToLightThreshold = 0.6,
+    this.lightCellLuminance,
     this.backgroundColor,
     super.key,
   })  : assert(
@@ -173,6 +174,12 @@ class GlassContentAwareScope extends StatefulWidget {
   /// `[0.5, 1.0]`; defaults to 0.6.
   final double darkToLightThreshold;
 
+  /// WCAG relative luminance (0–1) at or above which a grid cell votes light.
+  ///
+  /// When null, the cell votes by glyph contrast, which puts the
+  /// cutoff at about 0.18 (sRGB #767676).
+  final double? lightCellLuminance;
+
   /// Color substituted for fully transparent pixels in the capture.
   ///
   /// The content boundary may not paint every pixel (e.g. a transparent
@@ -211,6 +218,7 @@ class GlassContentAwareScope extends StatefulWidget {
     required double lightToDarkThreshold,
     required double darkToLightThreshold,
     required Color background,
+    double? lightCellLuminance,
   }) {
     if (width <= 0 || height <= 0) return current;
     var votesLight = 0;
@@ -248,7 +256,10 @@ class GlassContentAwareScope extends StatefulWidget {
       // through the medium range and flips late, like the native bars.
       final lightVariantContrast = _contrast(_lightVariantGlyphLuma, cellLuma);
       final darkVariantContrast = _contrast(_darkVariantGlyphLuma, cellLuma);
-      if (lightVariantContrast >= darkVariantContrast) {
+      final votesForLight = lightCellLuminance != null
+          ? cellLuma >= lightCellLuminance
+          : lightVariantContrast >= darkVariantContrast;
+      if (votesForLight) {
         votesLight++;
       } else {
         votesDark++;
@@ -539,6 +550,7 @@ class GlassContentAwareScopeState extends State<GlassContentAwareScope> {
           lightToDarkThreshold: widget.lightToDarkThreshold,
           darkToLightThreshold: widget.darkToLightThreshold,
           background: background,
+          lightCellLuminance: widget.lightCellLuminance,
         );
         if (verdict != sub._brightness) {
           sub._brightness = verdict;
